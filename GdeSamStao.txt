@@ -1,0 +1,193 @@
+napravio instalaciju laravela 5.2 komandom " composer create-project --prefer-dist laravel/laravel mobilni 5.2.29" i zatim napravio v-host tj u fajlu httpd-vhosts.conf iz foldera -
+-'C:\xampp\apache\conf\extra' dodao na dnu 
+<VirtualHost *:80>
+    DocumentRoot "C:/xampp/htdocs/mobilni/public"
+    ServerName auto.dev
+</VirtualHost>
+i u fajlu hosts iz foldera 'C:\Windows\System32\drivers\etc' na dnu dodao 
+127.0.0.1       mobilni.com 
+
+Pravim bazu 'mobilni' i podesavam .env fajl, pravim autentifikaciju i migriram users tabelu komandom " php artisan migrate " (AuthController.php i register.blade.php su prilicno -
+- izmenjeni posto se pri registraciji unose i grad i telefon i slicno takodje je dosta izmenjena migracija za 'users' tabelu)
+U modelu Users.php u fillable array upisujemo kolone users tabele koje se mogu menjati i pravim metode can_post() koji proverava da li je user author ili admin 
+zatim metod is_admin() koji proverava da li je admin i metod aktivan() koji proverava da li je aktivan
+Menjam AuthController tako da ce prilikom registracije user popunjavati name, email, password, telefon i grad polja takodje pravi se verifikacioninkod koji se salje useru u emailu
+-i koji se upisuje u tabelu users i zatim kad user aktivira nalog ta kolona se poredi sa kodom koji je bio u emailu, takodje se prilikom registracije prave folderi koji se zovu kao i ver
+-ifikacvioni kod usera u folderima 'mobilni\public\img\users' (za eventualni userov logo) i 'mobilni\public\img\oglasi' (za slike dodate uz userove oglase)
+Glavni layout ce biti app.blade.php u koji kopiram vecinu HTML - a iz templatekoji sam skinuo sa neta ( u folderu C:\Users\John Smith\Downloads\bootstrapThemes\Eshopper-
+- se nalazi template, css js i ostalo sam iskopirao u public folder instralacije)
+pravim u views folderu folder 'users' i u njemu vju profil.blade.php koji ce user koristiti da ima uvid u svoje oglase i komentare i podatke(telefon email grad i slicno)
+pravim 'email' folder takodje u 'resouces/views' u kom je vju koji se salje kao mail iz AuthControllera prilikom registracije u kom je link koji kad se klikne ide na metod aktivacija( ) -
+- UsersControllera (koji sada takodje pravim) i tako user aktivira svoj nalog
+UsersController u __construct(  ) metodu kaze da je u auth middleware-u tako da samo ulogovani useri mogu pozivati metode kontrolera  
+Pravim jos metod profil( ) koji vadi podatke usera koji ga je zvao i onda vraca vju profil.blade.php takodje metod prima i id(koji je po difoltu null i ako je stigao neciji id kao parame-
+-tar to znaci da je metod pozvao admin i onda ne vadi trenutno ulogovanog nego usera ciji je id stigao)
+Pravim i metod users( ) koji moze zvati admin koji vraca vju users.blade.php iz  'resouces/views/admin' koji prikazuje usere i onda ako je aktivan ima btn Deaktiviraj i obrnuto ako
+-je neaktivan ima btn Aktiviraj i treba ovde dodati da ima link ka profilu usera da admin moze da udje na userov profil
+pravim fajl users.js u 'mobilni\public\js\mobilnijq' u kom ce biti hendleri za vju users.blade.php, pravim da hendler za klik na btn Aktiviraj ili Deaktiviraj salje AJAX u metod -
+-manaktdeakt( ) UsersControllera i u zavisnosti da li je user aktivan ili neaktiva deaktivira ga ili aktivira i vraca odgovor u users.js koji onda menja kliknuti btn(Ako je bio Aktiviraj -
+-btn postaje Deaktiviraj i obrnuto...)
+U layoutu app.blade.php na liniji 214 ima search input koji sada podesavam da se vidi ako je @if(Request::is('users')) (dodacu da se vidi na jos nekim stranicama) i sada u fajlu-
+-users.js pravim hendler za unos u njega. To je dinamicna pretraga 'users' tabele koja se posle svakog novounetog karaktera menja i vadi usere koji u imenu imaju string koji -
+-je unet u input za search, pretragu radi metod searchusers() UsersControllera. Ako ima vise od 4 pronadjena usera ispod je btn 'Jos Korisnika' koji opet salje AJAX u -
+-UsersController tj metod searchusers( ) sa istim stringom koji je unet u input za pretragu
+
+Pravim migraciju i model za tabelu 'brands' imace kolone: id, name, logo, brojmodela i timestamps kolone, migriram i onda pravim i kontroller BrandsController (u __constructu - 
+- pisem da je kontroler samo za auth usere tj za admina uglavnom)i u njemu prvo metod index( ) koji vraca vju dodajbrand.blade.php iz 'mobilni\resources\views\admin' koji ce -
+- sluziti da admin dodaje brendove mobilnih i modele istih brendova
+dodajem u vju dodajbrand.blade.php formu za dodavanje brenda, forma kad se sabmituje ne radi nista posto nema action attr ali zato fajl dodajbrend.js ima hendler za sabmit
+- forme koji salje AJAX u metod dodajbrend( ) BrandsControllera koji radi validaciju i ako ne prodje vraca JSON-a AJAX-u iz dodajbrend.js a ako prodje validacija upisuje red u
+-brands tabelu i takodje vraca JSON-a da je sve proslo OK, ako ne prodje validacija hendler prikazuje errore koje je vratio kontroler,ako se upise red dodaje u div#unetibrendovi
+-div sa imenom i logo-om upravo unetog brenda mobilnih telefona, takodje metod dodajbrand( ) upisuje u folder 'mobilni\public\img\brands' sliku novog brenda koju takodje pos-
+-le tj kad stigne JSON u dodajbrand.js prikazujemo useru tj adminu, takodje metod dodajbrand( ) pravi folder koji se zove kao id upravo upisanog brenda u folderu - 
+- 'mobilni\public\img\modelibrenda' i onda kad budemo unosili modele brenda njihove slike ce ici u taj folder
+Pravim migraciju za tabelu 'phonemodels' imace kolone : id, brand_id(foreign key spusten iz 'brands' tabele, onDelete('cascade')), name, img, link i smart migriram ali pravim i ,-
+-migraciju kojojm dodajem i kolone ts(da li ima touchscreen) i year i migriram i to
+Pravim u  dodajbrand.blade.php i formu za dodavanje modela brendova, skoro cela je nevidljiva je dok se u inputu za ime brenda ne odabere nesto i onda se pojavi i ostatak -
+- forme kad se sabmituje forma aktivira se hendler u dodajbrand.js
+Preradio sam dodajbrand.js tako da sad ima funkciju sendajax( ) koju pozivaju i hendler za sabmit forme za dodavanje novog brenda i hendler za sabmit forme za dodavanje -
+- novog modela, hendleri uglavnom samo pokupe unos u formu koju rutu da koristi i flag b ili m da sendajax( ) zna da li se upisuje novi brend ili model telefona i onda zovu ovaj-
+- metod i posalju mu sta su pokupili i on salje AJAX u odgovarajuci metod BrandsControllera i prima odgovor pa ako nije prosla validacija priikaze errore a ako je proslo kako -
+- treba prikazuje na odgovarajucem mestu upravo uneti brend i njegov logo ili ako je unet model onda ime brenda ime modela i sliku modela i takodje cisti formu koja je sabmito-
+-vana i sprema je za sledeci unos
+Metod dodajmodel( ) BrandsControllera prvo radi validaciju zatim upisuje red u 'phonemodels' tabelu i onda upisuje sliku u folder 'mobilni\public\img\modelibrenda\id_brenda' -
+-(taj folder je napravljen kad se upisivao brend kom se sad dodaje model) i vraca JSON sa porukom o uspesnom upisu u tabelu 'phonemodels'
+Pravim priakz svih modela brenda, kad se u formi za unos novog modela u dodajbrand.blade.php u select-u za brend osdabere brend ispod forme koja se pojavi ima div btn-
+-#svimodelibrenda i kad se klikne salje AJAX preko metoda sendajax( ) a preko rute '/modelibrenda' u metod  modelibrenda( ) BrandsControllera koji vadi za sada po 8 modela
+-brenda i salje ih u brands.js na prikaz a to rad metod sendajax( ), u ovom slucaju treci argument poziva je 'mb' sto znaci modeli brenda takodje ako ima vise od 8 modela u bazi
+-pojavljuje se div #josmodelabrenda ispod prikazanih modela koji kad se klikne takodje preko sendajax( ) metoda salje AJAX u modelibrenda( ) BrandsControllera samo je sad
+-skip povecan za 8 pa preskace vec izvucene modele i opet ih metod sendajax( ) prikazuje. ovaj put treci argument pri pozivu sendajax( ) metod aje 'jmb' tj JosMiodelaBrenda
+Takodje div koji prikazuje sve modele brenda ispod forme za unos novog modela ima x close btn pa pravim i za to hendler u dodajbrand.js koji uklanja div  #modelibrenda u -
+-kom su prikazani modeli brenda i jos neke stvari(tipa vraca na 0 variablu skip i slicno...)
+Kada se klikne neki od prikazanih modela brenda ispod forme za unos novog modela forma za unos novog modela postaje forma za edit kliknutog modela
+Formi se menja klasa iz formazanovimodel u formazaupdatemodela i sada forma postaje forma za editovanje modela i iz atributa div-a #jedanmodel koji je kliknut uzimaju se -
+ - podatci modela i popunjavaju polja u formi takodje se prikazuje i slika i na dnu se u <span> #dodatnibtni koji je pored submit btn-a forme dodaju i btn-i za Delete modela i za-
+- Cancel brisanje takodje su u tom <span>-u i hidden polja sa id-em  modela i sa imenom slike posto ako admin doda novu sliku prilikom edita stara se mora brisati pa nam tre-
+-ba njemo ime
+Kad se forma za edit sabmituje pokupe se unete vrednosti i onda se poziva metod sendajax(form_data, urleditmodela, 'em'); koji preko rute '/editmodela' salje AJAX u metod -
+-editmodela( ) BrandsControllera koji je zakomentarisan kao i ovo u dodajbrand.js pa pogledaj
+Kad kontroler vrati JSON-a sendajax( ) na osnovu toga sta je vraceno prikazuje nesto(ako nije prosla validacija onda prikazuje errore i slicno) ako je sve OK onda se divu koji-
+-prikazuje editovani model menja naslov i slika i scrolluje se na taj div
+Pravim hendler za klik na Cancel btn ispod forme za editovanje modela koji poziva metod emptyphonemodelform(); koji sam napravio u dodajbrand.js koji prazni formu za edit-
+-modela i opet od nje pravi formu za dodavanje novog modela tj menja klase forme 
+Zatim radim na brisanju modela tj na kliku na btn Obrisi ispod forme za edit modela, pravim rutu - Route::post('/deletemodel', 'BrandsController@deletemodel'); , hendler za klik -
+-na btn Obrisi tj btn #deletemodel poziva sendajax(form_data, urldeletemodel, 'dm'); koji salje AJAX metodu deletemodel( ) BrandsControllera koji brise model i smanjuje vred -
+-nost kolone brojmodela 'brands' tabele
+Rad na editu brenda, dodajem u formi za novi model da kad se odabere brend ispod logoa se pojavi btn Izmeni Brend i kad se klikne taj btn forma za dodavanje brenda postaje
+-forma  za izmenu brenda, uzimamo od atributa btn-a Izmeni Brend id brenda ime brenda i logo renda , formi .brendforma skidamo klasu .brendforma i dajemo joj klasu -
+- .editbrendforma popunjavamo input za ime brenda trenutnim imenom brenda i logo priazujemo i forma jos ima skriveni input sa id-em brenda i dodajemo btn za Cancel i 
+- Brisanje brenda, kad se forma sabmituje hendler u dodajbrend.js kupi unos u formu i onda poziva metod sendajax( ) koji preko rute '/editbrenda' salje AJAX u metod editbrend()
+-BrandsConttrollera koji prvo radi validaciju pa ako ne prodje salje JSON sa errorima a ako prodje upisuje novi name brenda ili menja sliku ili i jedno i drugo i onda vraca JSON -
+- i onda sendajax( ) metod u else if(bilim == 'eb') radi sta treba tj prikazuje u divu ispod forme za unos brenda koja je bila forma za edit brenda novi izgled editovanog brenda
+Klik na btn Obrisi tj #deletebrend ispod forme za edit brenda ima takodje hendler u dodajbrand.js koji takodje poziva sendajax( ) metod i preko rute '/deletebrend' salje AJAX u -
+-metod deletebrend( ) BrandsControllera koji brise red iz 'brends' tabele po pristiglom id brise sve redove 'phonemodels' tabele po koloni brend_id (posto su tako povezane pri-
+-likom pravljenja baze i radi se on delete - cascade) i brise logo brenda iz 'mobilni\public\img\brands' i folder u kom su slike modela brenda koji se zove kao id obrisanog brenda -
+-  iz 'mobilni\public\img\modelibrenda'. Kad na kraju vrati odgovor o brisanju sendajax( ) tj deo u else if(bilim == 'db'){ } iz dodajbrand.js prazni forme za rad sa brendovima i sa -
+-modelima i brise iz <select> a za biranje brenda u formi za modele upravo obisdani brend i uklanja prikazane modele obrisanog brenda(ako su bili prikazani)
+
+Dodavanje dodatnih podataka za modele
+Pravim tabelu 'phone_model_datas' (pogledaj migraciju) koja ce imati one - to - one  relaciju sa 'phonemodels' tabelom i svaki put kad upisemo red u'phonemodels'tj kad dodamo
+-novi model upisace se red i u  'phone_model_datas',u tabelu se upisuju podatci sa GSM-arene tj ide se na link koji dodajemo prilikom dodavanja modela i uzimamo podatke iz -
+-tabele koja je tamo prikazana i upisujemo ih u  bazu, isto se radi i prilikom editovanja modela tj kad se poziva metod editmodela( ) BrandsControllera.
+Taj upis radi metod insertPmd($modelid, $url, $smart) koji prima argumente id modela, url tj link kolona phonemodels tabele i da li je telefon smart tj smart kolona phonemodels -
+-tabele (to nam treba posto se web stranica tj tabela na njoj razlikuje ako je telefon smart i ako nije smart), insertPmd( ) za svaku kolonu koju upisuje(osim onih u vezi kamere) -
+-poziva metod maketext( ) koji je takodje private metod BrandsControllera kao i insertPmd( ) da napravi string koji ce biti upisan u kolone tabele 'phone_model_datas' 
+
+Posto navigacija u app.blade.php layoutu treba variable sa npr popularnim brendovima i modelima i da sada ne bi stalno kad prikazujem neki vju(svaki extenduje app.blade.php)
+vadio to iz baze na jedno mesto cemo to raditi a to je AppServiceProvider.php iz 'mobilni\app\Providers' tj njegova boot( ) funkcija koja sada izgleda ovako - 
+public function boot(){
+        //ja dodo, kad god se ucitava vju app.blade.php iz mobilni\resources\views\layouts, odradice se ova boot() funkcija i ovde ce se izvuci
+        //varijable koje su mu potrebne da popuni navigaciju, vadimo za sada popularne brendove i popularne modele
+        view()->composer('layouts.app', function($view){
+          $view->with('popularbrands', Brand::whereNotNull('brojmodela')->orderBy('brojmodela', 'DESC')->skip(0)->take(5)->get())
+               ->with('popularmodels', Phonemodel::where('year', 2014)->skip(0)->take(8)->get()); 
+        });
+}
+takodje sam na vrhu uvezao Brand i Phonemodel modele da bi imao pristup tabeleama u bazi
+use App\Brand;
+use App\Phonemodel;
+Tako da sada app.blade.php layout kad god se ucita izvrsi se ova boot( ) funkcija i on napuni ove variable vrednostima koje trebaju i ne moram u svakom metodu koji ce pozva-
+-ti vju koji extenduje app.blade.php da vadim popularne modele i brendove nego to radim samo na ovom mestu. Ovo sam nasao na Laracastu LINK - 
+https://laracasts.com/series/laravel-5-fundamentals/episodes/25?autoplay=true
+
+Pravim kontroler FontController koji nece biti u auth middlewareu tj moci ce neulogovani useri da pozivaju metode, pravim metod index koji vraca vju welcome.blade.php i takodje
+-menjam u routes.php da ruta '/' ide na taj metod FrontControlera, 
+U navigaciji u appl.blade.php layoutu bice dropdown 'Brands' koja ce za sada prikazivati 5 brendova sa najvise modela, kad se klikne neki brend njegov id preko rute -
+- '/brandmodels/{id}' stize u metod brandmodels( ) FrontControllera koji vadi za pocetak 12 modela tog brenda i salje ih u vju brandmodels.blade.php da ih prikaze, ako brend ima
+-vise od 12 dodatih modela ispod prikazanih modela je vidljiv div btn 'Ucitaj Jos Modela'('#josmodelabrenda') koji ima hendler u brandmodels.js i kad se klikne poziva se hendler -
+- koji uzima id brenda ciji se modeli prikazuju, skip i take tj variablu brojmodelapostr i poziva funkciju sendajax( ) koja preko rute '/brandmodelsmore' salje AJAX u metod -
+-brandmodelsmore( ) FrontControllera koji vadi jos modela brenda ciji je id stigao i vraca JSON i onda funkcija sendajax( ) prikazuje te novopristigle modele brenda 
+Na dnu dropdown-a u navigaciji bice opcija AllBrands i kad kliknemo taj link poziva se metod allbrands( ) FrontControllera koji vadi sve iz 'brands' tabele i salje u vju allbrands. -
+-blade.php na prikazivanje, kad se tamo klikne neki od prikazanih brendova opewt se poziva metod brandmodels( ) FrontControllera i vade se modeli odredjenog brenda...
+Pravim vju modeldetails.blade.php koji ce kad se u brandmodels.blade.php klikne neki model prikazati sve podatke tog modela pravim rutu  modeldetails/id -
+- Route::get('/modeldetails/{id}', 'FrontController@modeldetails'); i metod modeldetails( ) u  FrontControlleru koji ce samo vaditi po pristiglom id-u model iz 'phonemodels' tabele a
+-u vjuu cemo iz tog objekta koristeci metod phone_model_data( ) Phonemodel.php modela vaditi podatke iz tabele 'phone_model_datas' za model koji se prikazuje
+
+U vjuu profile.blade.php pravim formu za dodavanje tj editovanje podataka usera, posto user pri registraciji popunjava samo Ime, Email, Grad, Telefon i Sifru a sada moze da me-
+-nja ta polja tj vrednosti unete u njih(osim email-a ) i da popuni i polja telefon2 i 3 adresa da li da se prikazuje email sa oglasom i da doda logo, forma ima hendlere u profile.js i kad
+- se sabmituje gadja metod useredit( ) UsersControllera koji edituje ili upisuje nove podatke u 'users' tabelu i takodje ako je user uploadovao logo onda u folder 'mobilni\public\img
+\users\ + user verification code' upisuje logo, takodje sam dodao da se prilikom registracije za svakog usera pravi ovaj folder, takodje pravim i mogucnost brisanja logo-a a to se -
+-radi ako user ima dodat logo onda pored njega u formi i ma btn 'ObrisiLogo' i ako ga klikne salje se AJAX iz profile.js u metod deletelogo( ) UsersControlllera koji brise logo 
+
+Pravim migraciju i model za 'oglas' tabelu koja ima polja id,user_id(foreign key iz users tabele), brand_id(foreign key iz brands tabele),phonemodel_id(foregn key iz phonemodels-
+tabele), brand, model(ako user ne nadje brend ili model medju ponudjenim brendovima i modelima moci ce u formi za novi oglas da kaze Ostalo... kad bira brend i model,i onda -
+se ti selekti pretvaraju u text inpute i onda ono sto upise se upisuje u kolone brand i model a kolone brand_id i phonemodel_id ostaju NULL), title, price, description, damaged, -
+-new, images, imagesfolder, timesviewed, approved i naravno created_at i updated_at
+Pored userove slike u profile.blade.php ima btn za Novi Oglas koji gadja rutu - Route::get('/novioglas/{id?}', 'OglasController@novioglas'); koja gadja metod novioglas( ) -
+-OglasControllera taj btn ce biti vidljiv i adminu i onda ce imati userov id kao argument, metod novioglas( ) vadi usera koji ce da upise oglas ili usera ciji je id -stigao i sve brendove
+(da bi se napravila dropdown za biranje brenda)i salje to u vju novioglas.blade.phpiz'mobilni\resources\views\users' u kom je forma za dodavanje novog oglasa koja kad se sabm
+-ituje preko rute - Route::post('/upisinovioglas', 'OglasController@upisioglas'); gadja metod upisioglas OglasControllera koji prvo radi validaciju i zatim upisuje red u 'oglas' tabelu
+Takodje u novioglas.js su svi potrebni hendleri da bi forma funkcionisala kako treba, tj kad se odabere brend hendler vadi sve modele brenda ili kad se odabere medju modelima
+opcija Ostalo... hendler pretvara select za model u text input pa user mozwe uneti model. Postoje tri 'moda' za formu:0(kad user nadje i brend i model koji mu trebaju medju ponu-
+djenim brendovima i modelima i onda se popunjavaju u 'oglas' tabeli kolone brand_id i phonemodel_id a kolone brand i model ostaju NULL), 1 (kad ne nadje ni brend ni model -
+-medju ponudjenim opcijama, onda se popunjavaju kolone brand i model onim sto je uneo u text inpute u formi a kolone brand_id i phonemodel_id ostaju NULL) i opcija 2(kad -
+-nadje brend medju popunjenima a ne nadje model onda se popunjavaju kolone brand_id i model a kolone brand i phonemodel_id ostaju NULL).
+Zbog validacije tj slucaja da ne prodje validacija a user je dodavao slike pravim sistem koji funkcionise ovako: Kad user uploaduje slike i sabmituje formu pre validacije slike se cu-
+-vaju u folderu 'mobilni\public\img\oglasi\$user->verification\temp' pi dobijaju imena po polju u kom su uploadovane(1.jpg ili 2.jpg ima ih 4) ako validacija ne prodje i redirectuje se -
+-nazad na formu, vec dodate slike ce opet biti vidljive jer vju proverava da li postoje slike u temp folderu tj u 'mobilni\public\img\oglasi\$user->verification\temp' i ako postoje prikaz-
+-uje njih kao placeholdere za file inpute i user je svestan da su te slike i dlaje u formi(tj vec su uploadovane) i moze dodati nove umesto njih i ako je neko polje prazno itd... Ako fo-
+-rma prodje validaciju sadrzaj temp foldera tj'mobilni\public\img\oglasi\$user->verification\temp'se cut-uje i prebacuje u folder'mobilni\public\img\oglasi\$user->verification\idoglasa' 
+i temp folder ostaje prazan tako da ako user odmah dodaje jos jedan oglas u formi ce placeholderi za file inpute biti siluete telefona, takodje dodajem u metod novioglas( ) da uve
+-k prvo pre nego pozove vju novioglas.blade.php isprazni za svaki slucaj userov temp folder (ako slucajno ostanu neke slike u njemu tj ako npr useru ne prodje validacija a on je 
+dodao slike i onda odustane od dodvanja oglasa...)
+
+Dodajem u profile.blade.php ispod diva sa userovim podatcima (koji se vidi kad se klikn btn IzmeniLicnePodatke) div sa do sada dodatim oglasima usera koji se vidi kad  se kli-
+-kne btn OglasiKorisnika
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
